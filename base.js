@@ -1,5 +1,3 @@
-export var adapter = await navigator.gpu.requestAdapter();
+import * as ren from './renderer.js'
 
-export async function init(){
-    console.log(adapter!=null);
-}
+export {ren};

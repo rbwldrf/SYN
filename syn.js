@@ -1,3 +1,3 @@
 import * as syn from './base.js'
 
-syn.init();
+syn.ren.init();

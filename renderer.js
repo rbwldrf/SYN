@@ -2,10 +2,31 @@ export var adapter;
 export var device;
 export var context;
 
-export var ctTexture;
+export var contextTexture;
 export var depthTexture;
 
 export var canvas;
+
+var pipelinePaths = ["./default.pipeline"]
+var pipelines = []
+
+async function getJSON(path){
+	var result;
+	await fetch(path).then(
+		(response) => response.json()
+	).then(
+		(json) => {result = json;}
+	);	
+	return result;
+}
+
+async function getRaw(path){
+	var result;
+	await fetch(path).then(
+		(response) => {result = response.text();}
+	);	
+	return result;
+}
 
 export async function init(){
 
@@ -22,17 +43,104 @@ export async function init(){
 			GPUTextureUsage.RENDER_ATTACHMENT
 	});
 
-	ctTexture = context.getCurrentTexture();
+	await createPipelines();	
+	
+	setInterval(render,200);
+
+}
+
+var colorAttachment;
+var depthAttachment;
+
+export async function render(){	
+	canvas.width = canvas.clientWidth;
+	canvas.height = canvas.clientHeight;
+
+	contextTexture = context.getCurrentTexture();
 	depthTexture = device.createTexture({
-		size: [ctTexture.width,ctTexture.height,1],
+		size: [contextTexture.width,contextTexture.height,1],
 		usage:  GPUTextureUsage.COPY_SRC | 
 			GPUTextureUsage.RENDER_ATTACHMENT,
 		format: 'depth24plus-stencil8',
 		dimension: '2d'
 	});
 
-	var layout = device.createPipelineLayout({
-		bindGroupLayouts: []
+	var encoder = await device.createCommandEncoder();
+
+	colorAttachment = {
+		view: contextTexture.createView(),
+		clearValue: {r:0,g:0,b:0,a:1},
+		loadOp: 'clear',
+		storeOp: 'store'
+	};
+
+	depthAttachment = {
+		view: depthTexture.createView(),
+		depthClearValue: 1,
+		depthLoadOp: 'clear',
+		depthStoreOp: 'store',
+		stencilClearValue: 0,
+		stencilLoadOp: 'clear',
+		stencilStoreOp: 'store'
+	}
+
+	var pass = encoder.beginRenderPass({
+		colorAttachments: [colorAttachment],
+		depthStencilAttachment: depthAttachment
 	});
 
+	pass.setViewport(0,0,contextTexture.width,contextTexture.height,0,1);
+	pass.setScissorRect(0,0,contextTexture.width,contextTexture.height);
+
+	pass.setPipeline(pipelines[0]);
+
+	pass.draw(3);
+
+	pass.end();
+
+	device.queue.submit([encoder.finish()]);
+	//requestAnimationFrame(render);
+
+}
+
+export async function createPipelines(){
+	
+	for(var i = 0; i<pipelinePaths.length;++i){
+		var layout = device.createPipelineLayout({
+			bindGroupLayouts: []
+		});
+
+		var pipeline = await getJSON(pipelinePaths[i]);
+		var shader = await getJSON(pipeline.shader);
+
+		var vertex = device.createShaderModule({code:await getRaw(shader.vertex)});
+		var fragment = device.createShaderModule({code:await getRaw(shader.fragment)});
+
+		pipelines.push(
+			device.createRenderPipeline({
+				layout: layout,
+				vertex: {
+					module: vertex,
+					entryPoint: 'main',
+					buffers: []
+				},
+				fragment: {
+					module: fragment,
+					entryPoint: 'main',
+					targets: [{format: 'bgra8unorm'}]
+				},
+				primitive: {
+					frontFace: 'cw',
+					cullMode: pipeline.cullMode,
+					topology: 'triangle-list'
+				},
+				depthStencil: {
+					depthWriteEnabled: false,
+					depthCompare: pipeline.depthCompare,
+					format: 'depth24plus-stencil8'
+				}
+			})
+		);
+	}
+	
 }

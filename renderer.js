@@ -1,4 +1,3 @@
-export var adapter;
 export var device;
 export var context;
 
@@ -10,27 +9,11 @@ export var canvas;
 var pipelinePaths = ["./default.pipeline"]
 var pipelines = []
 
-async function getJSON(path){
-	var result;
-	await fetch(path).then(
-		(response) => response.json()
-	).then(
-		(json) => {result = json;}
-	);	
-	return result;
-}
-
-async function getRaw(path){
-	var result;
-	await fetch(path).then(
-		(response) => {result = response.text();}
-	);	
-	return result;
-}
+import * as syn from './base.js'
 
 export async function init(){
 
-	adapter = await navigator.gpu.requestAdapter();
+	var adapter = await navigator.gpu.requestAdapter();
 	device = await adapter.requestDevice();
 
 	canvas = document.querySelector("#syn");
@@ -110,11 +93,11 @@ export async function createPipelines(){
 			bindGroupLayouts: []
 		});
 
-		var pipeline = await getJSON(pipelinePaths[i]);
-		var shader = await getJSON(pipeline.shader);
+		var pipeline = await syn.io.getJSON(pipelinePaths[i]);
+		var shader = await syn.io.getJSON(pipeline.shader);
 
-		var vertex = device.createShaderModule({code:await getRaw(shader.vertex)});
-		var fragment = device.createShaderModule({code:await getRaw(shader.fragment)});
+		var vertex = device.createShaderModule({code:await syn.io.getRaw(shader.vertex)});
+		var fragment = device.createShaderModule({code:await syn.io.getRaw(shader.fragment)});
 
 		pipelines.push(
 			device.createRenderPipeline({

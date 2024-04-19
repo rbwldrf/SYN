@@ -19,6 +19,30 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="DirStackFileIncluder.h" />
+    <ClInclude Include="include\glslang\build_info.h" />
+    <ClInclude Include="include\glslang\Include\glslang_c_interface.h" />
+    <ClInclude Include="include\glslang\Include\glslang_c_shader_types.h" />
+    <ClInclude Include="include\glslang\Include\ResourceLimits.h" />
+    <ClInclude Include="include\glslang\MachineIndependent\Versions.h" />
+    <ClInclude Include="include\glslang\Public\ResourceLimits.h" />
+    <ClInclude Include="include\glslang\Public\resource_limits_c.h" />
+    <ClInclude Include="include\glslang\Public\ShaderLang.h" />
+    <ClInclude Include="include\glslang\SPIRV\disassemble.h" />
+    <ClInclude Include="include\glslang\SPIRV\GlslangToSpv.h" />
+    <ClInclude Include="include\glslang\SPIRV\Logger.h" />
+    <ClInclude Include="include\glslang\SPIRV\spirv.hpp" />
+    <ClInclude Include="include\glslang\SPIRV\SPVRemapper.h" />
+    <ClInclude Include="main.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="frag.glsl" />
+    <None Include="vert.glsl" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{d543e672-b2ea-49d4-8885-a3af811f7965}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
@@ -106,13 +130,15 @@
       <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(VULKAN_SDK)\Third-Party\Include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <BuildStlModules>true</BuildStlModules>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>vulkan-1.lib;SDL2.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(VULKAN_SDK)\Lib;$(VULKAN_SDK)\Third-Party\Bin;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib;SDL2.lib;glslangd.lib;MachineIndependentd.lib;GenericCodeGend.lib;SPIRVd.lib;SPIRV-Toolsd.lib;glslang-default-resource-limitsd.lib;SPIRV-Tools-optd.lib;SPVRemapperd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\SYN\lib;C:\VulkanSDK\1.3.275.0\Lib;$(VULKAN_SDK)\Lib;$(VULKAN_SDK)\Third-Party\Bin;C:\SYN\glslang-master-windows-Release\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
+      <AdditionalOptions>/VERBOSE %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -157,21 +183,6 @@
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="main.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="magic_enum\magic_enum.hpp" />
-    <ClInclude Include="magic_enum\magic_enum_all.hpp" />
-    <ClInclude Include="magic_enum\magic_enum_containers.hpp" />
-    <ClInclude Include="magic_enum\magic_enum_flags.hpp" />
-    <ClInclude Include="magic_enum\magic_enum_format.hpp" />
-    <ClInclude Include="magic_enum\magic_enum_fuse.hpp" />
-    <ClInclude Include="magic_enum\magic_enum_iostream.hpp" />
-    <ClInclude Include="magic_enum\magic_enum_switch.hpp" />
-    <ClInclude Include="magic_enum\magic_enum_utility.hpp" />
-    <ClInclude Include="main.h" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
@@ -179,6 +190,8 @@
     <LocalDebuggerEnvironment>PATH=$(VULKAN_SDK)\Third-Party\Bin
 $(LocalDebuggerEnvironment)</LocalDebuggerEnvironment>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <IncludePath>C:\SYN\include;C:\VulkanSDK\1.3.275.0\Include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\SYN\Lib;C:\VulkanSDK\1.3.275.0\Lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LocalDebuggerEnvironment>PATH=$(VULKAN_SDK)\Third-Party\Bin

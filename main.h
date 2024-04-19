@@ -25,10 +25,25 @@
 
 #include <Windows.h>
 #include <sstream>
+#include <filesystem>
+#include <fstream>
+#include <string>
 
 #include "magic_enum/magic_enum_all.hpp"
 
+
+#include "glslang/SPIRV/GlslangToSpv.h"
+#include "glslang/Include/glslang_c_interface.h"
+#include "glslang/Public/resource_limits_c.h"
+#include "glslang/Public/ResourceLimits.h"
+#include "glslang/SPIRV/GlslangToSpv.h"
+#include "glslang/SPIRV/spirv.hpp"
+
+#include "./DirStackFileIncluder.h"
+
 #define MAGIC_ENUM_SUPPORTED_ALIASES 1
+
+namespace fs = std::filesystem;
 
 #undef max
 #undef min

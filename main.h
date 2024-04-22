@@ -31,7 +31,7 @@
 
 #include "magic_enum/magic_enum_all.hpp"
 
-
+#include "glslang/Public/ShaderLang.h"
 #include "glslang/SPIRV/GlslangToSpv.h"
 #include "glslang/Include/glslang_c_interface.h"
 #include "glslang/Public/resource_limits_c.h"
@@ -39,7 +39,6 @@
 #include "glslang/SPIRV/GlslangToSpv.h"
 #include "glslang/SPIRV/spirv.hpp"
 
-#include "./DirStackFileIncluder.h"
 
 #define MAGIC_ENUM_SUPPORTED_ALIASES 1
 

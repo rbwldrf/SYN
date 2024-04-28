@@ -54,45 +54,74 @@ namespace fs = std::filesystem;
    OutputDebugStringW( os_.str().c_str() );  \
 }
 
-uint32_t imgCt;
+namespace syn {
 
-vk::Device device;
-vk::Extent2D ext;
-vk::RenderPass renderPass;
-std::vector<VkFramebuffer> swapChainFramebuffers;
-vk::Pipeline graphicsPipeline;
-vk::Viewport viewport{};
-vk::Rect2D scissor{};
-vk::PhysicalDevice cur_pd;
-vk::Semaphore imageAvailableSemaphore;
-vk::Semaphore renderFinishedSemaphore;
-vk::Fence inFlightFence;
-vk::SwapchainKHR sc{};
-vk::CommandBuffer commandBuffer;
-vk::CommandPool commandPool;
-vk::SurfaceCapabilitiesKHR cap;
-vk::SurfaceFormatKHR fmt;
-vk::SurfaceKHR surface;
-vk::PresentModeKHR pmd;
-vk::Instance instance;
-vk::PipelineLayout layout;
+	namespace window {
+		SDL_Window* self;
+		vk::Extent2D extent;
+		vk::Viewport viewport{};
+		vk::Rect2D scissor{};
+	}
+
+	vk::Instance instance;
+	vk::Device device;
+
+	namespace ren {
+
+		vk::PhysicalDevice physicalDevice;
+
+		vk::CommandBuffer commandBuffer;
+		vk::CommandPool commandPool;
+
+		vk::RenderPass renderPass;
+
+		namespace swapchain {
+			vk::SwapchainKHR self{};
+			std::vector<VkFramebuffer> framebuffers;
+			std::vector<vk::ImageView> imageViews;
+			vk::PresentModeKHR presentMode;
+			uint32_t imageCount;
+		}
+
+		namespace semaphores {
+			vk::Semaphore imageAvailable;
+			vk::Semaphore renderFinished;
+		}
+
+		namespace fences {
+			vk::Fence inFlight;
+		}
+
+		namespace pipeline {
+			vk::Pipeline self;
+			vk::PipelineLayout layout;
+		}
+
+		namespace queues {
+			vk::Queue graphics;
+			vk::Queue present;
+		}
+
+		namespace surface {
+			vk::SurfaceKHR self{};
+			vk::SurfaceFormatKHR format{};
+			vk::SurfaceCapabilitiesKHR capabilities{};
+		}
+
+		namespace meta {
+			vk::PipelineShaderStageCreateInfo shaderStages[2];
+			vk::PipelineVertexInputStateCreateInfo vertexInputInfo{};
+			vk::PipelineInputAssemblyStateCreateInfo inputAssembly{};
+			vk::PipelineViewportStateCreateInfo viewportState{};
+			vk::PipelineRasterizationStateCreateInfo rasterizer{};
+			vk::PipelineColorBlendAttachmentState colorBlendAttachment{};
+			vk::PipelineColorBlendStateCreateInfo colorBlending{};
+		}
+	}
 
 
-std::vector<vk::ImageView> sciv;
+};
 
-vk::PipelineShaderStageCreateInfo shaderStages[2];
-
-vk::PipelineVertexInputStateCreateInfo vertexInputInfo{};
-vk::PipelineInputAssemblyStateCreateInfo inputAssembly{};
-vk::PipelineViewportStateCreateInfo viewportState{};
-vk::PipelineRasterizationStateCreateInfo rasterizer{};
-vk::PipelineColorBlendAttachmentState colorBlendAttachment{};
-vk::PipelineColorBlendStateCreateInfo colorBlending{};
-
-SDL_Window* window;
-
-vk::Queue gq;
-vk::Queue pq;
 
 int graphics_index = -1;
 int compute_index = -1;

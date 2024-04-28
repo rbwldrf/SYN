@@ -20,7 +20,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="layout.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="renderer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DirStackFileIncluder.h" />
@@ -37,7 +39,9 @@
     <ClInclude Include="include\glslang\SPIRV\Logger.h" />
     <ClInclude Include="include\glslang\SPIRV\spirv.hpp" />
     <ClInclude Include="include\glslang\SPIRV\SPVRemapper.h" />
+    <ClInclude Include="layout.h" />
     <ClInclude Include="main.h" />
+    <ClInclude Include="renderer.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="frag.glsl" />

@@ -53,3 +53,53 @@ namespace fs = std::filesystem;
    os_ << s;                   \
    OutputDebugStringW( os_.str().c_str() );  \
 }
+
+uint32_t imgCt;
+
+vk::Device device;
+vk::Extent2D ext;
+vk::RenderPass renderPass;
+std::vector<VkFramebuffer> swapChainFramebuffers;
+vk::Pipeline graphicsPipeline;
+vk::Viewport viewport{};
+vk::Rect2D scissor{};
+vk::PhysicalDevice cur_pd;
+vk::Semaphore imageAvailableSemaphore;
+vk::Semaphore renderFinishedSemaphore;
+vk::Fence inFlightFence;
+vk::SwapchainKHR sc{};
+vk::CommandBuffer commandBuffer;
+vk::CommandPool commandPool;
+vk::SurfaceCapabilitiesKHR cap;
+vk::SurfaceFormatKHR fmt;
+vk::SurfaceKHR surface;
+vk::PresentModeKHR pmd;
+vk::Instance instance;
+vk::PipelineLayout layout;
+
+
+std::vector<vk::ImageView> sciv;
+
+vk::PipelineShaderStageCreateInfo shaderStages[2];
+
+vk::PipelineVertexInputStateCreateInfo vertexInputInfo{};
+vk::PipelineInputAssemblyStateCreateInfo inputAssembly{};
+vk::PipelineViewportStateCreateInfo viewportState{};
+vk::PipelineRasterizationStateCreateInfo rasterizer{};
+vk::PipelineColorBlendAttachmentState colorBlendAttachment{};
+vk::PipelineColorBlendStateCreateInfo colorBlending{};
+
+SDL_Window* window;
+
+vk::Queue gq;
+vk::Queue pq;
+
+int graphics_index = -1;
+int compute_index = -1;
+int transfer_index = -1;
+int sbinding_index = -1;
+int protected_index = -1;
+int vdecode_index = -1;
+int vencode_index = -1;
+int optflow_index = -1;
+int present_index = -1;

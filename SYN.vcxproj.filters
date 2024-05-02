@@ -3,6 +3,9 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="layout.cpp" />
+    <ClCompile Include="renderer.cpp" />
+    <ClCompile Include="fuck.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="main.h" />
@@ -20,6 +23,10 @@
     <ClInclude Include="include\glslang\SPIRV\Logger.h" />
     <ClInclude Include="include\glslang\SPIRV\spirv.hpp" />
     <ClInclude Include="include\glslang\SPIRV\SPVRemapper.h" />
+    <ClInclude Include="layout.h" />
+    <ClInclude Include="renderer.h" />
+    <ClInclude Include="include\vk_mem_alloc.h" />
+    <ClInclude Include="fuck.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="vert.glsl" />

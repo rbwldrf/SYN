@@ -33,17 +33,24 @@ namespace syn {
 
 		extern vk::RenderPass renderPass;
 
+		extern AllocatedImage drawImage;
+
+
+		extern vk::RenderingAttachmentInfo colorAttachment;
+		extern vk::AttachmentReference colorAttachmentRef;
+
 		namespace swapchain {
 			extern vk::SwapchainKHR self;
 			extern std::vector<VkFramebuffer> framebuffers;
 			extern std::vector<vk::ImageView> imageViews;
 			extern vk::PresentModeKHR presentMode;
 			extern uint32_t imageCount;
-		}
+			extern std::vector<vk::Image, std::allocator<vk::Image>> images;
+}
 
 		namespace semaphores {
-			extern vk::Semaphore imageAvailable;
-			extern vk::Semaphore renderFinished;
+			extern vk::Semaphore wait;
+			extern vk::Semaphore signal;
 		}
 
 		namespace fences {
@@ -66,7 +73,18 @@ namespace syn {
 			extern vk::SurfaceCapabilitiesKHR capabilities;
 		}
 
+		namespace buffers {
+			extern vk::Buffer vertex;
+		}
+
+		namespace memory {
+			extern VmaAllocator allocator;
+			extern AllocatedBuffer vertexBuffer;
+		}
+
 		namespace meta {
+			extern vk::MemoryRequirements memoryReq;
+			
 			extern vk::PipelineShaderStageCreateInfo shaderStages[2];
 			extern vk::PipelineVertexInputStateCreateInfo vertexInputInfo;
 			extern vk::PipelineInputAssemblyStateCreateInfo inputAssembly;

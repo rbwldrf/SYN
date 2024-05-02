@@ -32,44 +32,6 @@ extern struct Vertex {
 	}
 
 };
-
-void transition_image(vk::CommandBuffer cmd, vk::Image image, vk::ImageLayout currentLayout, vk::ImageLayout newLayout)
-{
-	VkImageMemoryBarrier2 imageBarrier{ .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
-	imageBarrier.pNext = nullptr;
-
-	imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-	imageBarrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT;
-	imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-	imageBarrier.dstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
-
-	imageBarrier.oldLayout = (VkImageLayout)currentLayout;
-	imageBarrier.newLayout = (VkImageLayout)newLayout;
-
-	VkImageAspectFlags aspectMask = (newLayout == vk::ImageLayout::eDepthAttachmentOptimal) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
-
-	VkImageSubresourceRange subImage{};
-	subImage.aspectMask = aspectMask;
-	subImage.baseMipLevel = 0;
-	subImage.levelCount = VK_REMAINING_MIP_LEVELS;
-	subImage.baseArrayLayer = 0;
-	subImage.layerCount = VK_REMAINING_ARRAY_LAYERS;
-
-
-	imageBarrier.subresourceRange = subImage;
-	imageBarrier.image = image;
-
-	VkDependencyInfo depInfo{};
-	depInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-	depInfo.pNext = nullptr;
-
-	depInfo.imageMemoryBarrierCount = 1;
-	depInfo.pImageMemoryBarriers = &imageBarrier;
-
-	vkCmdPipelineBarrier2(cmd, &depInfo);
-}
-
-
 const std::vector<Vertex> vertices = std::vector<Vertex>({
 	{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
 	{{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
@@ -150,8 +112,6 @@ bool vulkanSDLInit() {
 		return false;
 	}
 
-	
-
 	// Get WSI extensions from SDL (we can add more if we like - we just can't remove these)
 	unsigned extension_count;
 	const char* const* extensions = SDL_Vulkan_GetInstanceExtensions(&extension_count);
@@ -202,7 +162,27 @@ bool vulkanSDLInit() {
 }
 
 void createImageViews() {
-	std::cout << "OBSOLETE." << std::endl;
+	std::vector<vk::Image> sci = syn::device.getSwapchainImagesKHR(syn::ren::swapchain::self);
+
+	syn::ren::swapchain::imageViews.resize(sci.size());
+
+	for (int i = 0; i < sci.size(); ++i) {
+		vk::ImageViewCreateInfo ivci;
+		ivci.image = sci[i];
+		ivci.viewType = vk::ImageViewType::e2D;
+		ivci.format = syn::ren::surface::format.format;
+		ivci.components.r = vk::ComponentSwizzle::eIdentity;
+		ivci.components.g = vk::ComponentSwizzle::eIdentity;
+		ivci.components.b = vk::ComponentSwizzle::eIdentity;
+		ivci.components.a = vk::ComponentSwizzle::eIdentity;
+		ivci.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+		ivci.subresourceRange.baseMipLevel = 0;
+		ivci.subresourceRange.levelCount = 1;
+		ivci.subresourceRange.baseArrayLayer = 0;
+		ivci.subresourceRange.layerCount = 1;
+
+		syn::device.createImageView(&ivci, nullptr, &syn::ren::swapchain::imageViews[i]);
+	}
 }
 
 void createSwapChain() {
@@ -223,7 +203,7 @@ void createSwapChain() {
 	scci.imageColorSpace = syn::ren::surface::format.colorSpace;
 	scci.imageExtent = syn::window::extent;
 	scci.imageArrayLayers = 1;
-	scci.imageUsage = vk::ImageUsageFlagBits::eTransferDst;
+	scci.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
 
 	uint32_t qfi[] = { graphics_index,present_index };
 
@@ -245,40 +225,6 @@ void createSwapChain() {
 	scci.oldSwapchain = nullptr;
 
 	syn::device.createSwapchainKHR(&scci, nullptr, &syn::ren::swapchain::self);
-
-	vk::Extent3D drawImageExtent = {
-	syn::window::extent.width,
-	syn::window::extent.height,
-	1};
-
-	syn::ren::drawImage.imageFormat = vk::Format::eR16G16B16A16Sfloat;
-	syn::ren::drawImage.imageExtent = drawImageExtent;
-
-	vk::ImageUsageFlags drawImageUsages{};
-	drawImageUsages |= vk::ImageUsageFlagBits::eTransferSrc;
-	drawImageUsages |= vk::ImageUsageFlagBits::eStorage;
-	drawImageUsages |= vk::ImageUsageFlagBits::eColorAttachment;
-
-	auto img_info = create_image_info(syn::ren::drawImage.imageFormat, drawImageUsages, drawImageExtent, vk::ImageLayout::eUndefined);
-
-	VmaAllocationCreateInfo rimg_allocinfo = {};
-	rimg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-	rimg_allocinfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-	vmaCreateImage(syn::ren::memory::allocator, (VkImageCreateInfo*)&img_info, &rimg_allocinfo, (VkImage*)& syn::ren::drawImage.image, &syn::ren::drawImage.allocation, nullptr);
-
-
-	auto img_view_info = imageview_create_info(syn::ren::drawImage.imageFormat, syn::ren::drawImage.image, vk::ImageAspectFlagBits::eColor);
-
-	syn::device.createImageView(&img_view_info, nullptr, &syn::ren::drawImage.imageView);
-
-	syn::ren::colorAttachment.loadOp = vk::AttachmentLoadOp::eClear;
-	syn::ren::colorAttachment.storeOp = vk::AttachmentStoreOp::eStore;
-	syn::ren::colorAttachment.imageView = syn::ren::drawImage.imageView;
-	syn::ren::colorAttachment.imageLayout = vk::ImageLayout::eGeneral;
-
-	syn::ren::swapchain::images = syn::device.getSwapchainImagesKHR(syn::ren::swapchain::self);
-
 }
 
 void createPipelineLayout() {
@@ -288,10 +234,10 @@ void createPipelineLayout() {
 
 	vk::VertexInputBindingDescription* bla = &bind;
 
-	syn::ren::meta::vertexInputInfo.vertexBindingDescriptionCount = 0;
-	syn::ren::meta::vertexInputInfo.vertexAttributeDescriptionCount = 0;
-	syn::ren::meta::vertexInputInfo.pVertexBindingDescriptions = nullptr;
-	syn::ren::meta::vertexInputInfo.pVertexAttributeDescriptions = nullptr;
+	syn::ren::meta::vertexInputInfo.vertexBindingDescriptionCount = 1;
+	syn::ren::meta::vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attr.size());
+	syn::ren::meta::vertexInputInfo.pVertexBindingDescriptions = bla;
+	syn::ren::meta::vertexInputInfo.pVertexAttributeDescriptions = attr.data();
 
 	syn::ren::meta::inputAssembly.topology = vk::PrimitiveTopology::eTriangleList;
 	syn::ren::meta::inputAssembly.primitiveRestartEnable = false;
@@ -335,53 +281,46 @@ void createPipelineLayout() {
 	std::cout << "Pipeline layout successfully created." << std::endl;
 }
 
-vk::ImageCreateInfo create_image_info(vk::Format fmt, vk::ImageUsageFlags usage, vk::Extent3D extent, vk::ImageLayout layout) {
-	VkImageCreateInfo info = {};
-	info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-	info.pNext = nullptr;
-
-	info.imageType = VK_IMAGE_TYPE_2D;
-
-	info.format = (VkFormat)fmt;
-	info.extent = extent;
-	info.initialLayout = (VkImageLayout)layout;
-
-	info.mipLevels = 1;
-	info.arrayLayers = 1;
-
-	//for MSAA. we will not be using it by default, so default it to 1 sample per pixel.
-	info.samples = VK_SAMPLE_COUNT_1_BIT;
-
-	//optimal tiling, which means the image is stored on the best gpu format
-	info.tiling = VK_IMAGE_TILING_OPTIMAL;
-	info.usage = (VkImageUsageFlags)usage;
-
-	return info;
-}
-
-vk::ImageViewCreateInfo imageview_create_info(vk::Format format, vk::Image image, vk::ImageAspectFlags aspectFlags)
-{
-	// build a image-view for the depth image to use for rendering
-	VkImageViewCreateInfo info = {};
-	info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	info.pNext = nullptr;
-
-	info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	info.image = image;
-	info.format = (VkFormat)format;
-	info.subresourceRange.baseMipLevel = 0;
-	info.subresourceRange.levelCount = 1;
-	info.subresourceRange.baseArrayLayer = 0;
-	info.subresourceRange.layerCount = 1;
-	info.subresourceRange.aspectMask = (VkImageAspectFlags)aspectFlags;
-
-	return info;
-}
-
 void createRenderPass() {
+	vk::AttachmentDescription colorAttachment{};
+	colorAttachment.format = syn::ren::surface::format.format;
+	colorAttachment.samples = vk::SampleCountFlagBits::e1;
+	colorAttachment.loadOp = vk::AttachmentLoadOp::eClear;
+	colorAttachment.storeOp = vk::AttachmentStoreOp::eStore;
+	colorAttachment.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+	colorAttachment.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+	colorAttachment.initialLayout = vk::ImageLayout::eUndefined;
+	colorAttachment.finalLayout = vk::ImageLayout::ePresentSrcKHR;
 
-	std::cout << "OBSOLETE." << std::endl;
+	vk::AttachmentReference colorAttachmentRef{};
+	colorAttachmentRef.attachment = 0;
+	colorAttachmentRef.layout = vk::ImageLayout::eColorAttachmentOptimal;
 
+	vk::SubpassDescription subpass{};
+	subpass.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
+	subpass.colorAttachmentCount = 1;
+	subpass.pColorAttachments = &colorAttachmentRef;
+
+	vk::SubpassDependency dependency{};
+	dependency.srcSubpass = vk::SubpassExternal;
+	dependency.dstSubpass = 0;
+	dependency.srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+	dependency.srcAccessMask = vk::AccessFlagBits::eNone;
+	dependency.dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+	dependency.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
+
+
+	vk::RenderPassCreateInfo renderPassInfo{};
+	renderPassInfo.attachmentCount = 1;
+	renderPassInfo.pAttachments = &colorAttachment;
+	renderPassInfo.subpassCount = 1;
+	renderPassInfo.pSubpasses = &subpass;
+	renderPassInfo.dependencyCount = 1;
+	renderPassInfo.pDependencies = &dependency;
+
+	syn::device.createRenderPass(&renderPassInfo, nullptr, &syn::ren::renderPass);
+
+	std::cout << "Render pass successfully created." << std::endl;
 }
 
 void createRenderPipeline() {
@@ -411,6 +350,7 @@ void createRenderPipeline() {
 	pipelineInfo.pColorBlendState = &syn::ren::meta::colorBlending;
 	pipelineInfo.pDynamicState = &dynamicState;
 	pipelineInfo.layout = syn::ren::pipeline::layout;
+	pipelineInfo.renderPass = syn::ren::renderPass;
 	pipelineInfo.subpass = 0;
 
 
@@ -422,7 +362,23 @@ void createRenderPipeline() {
 }
 
 void createFramebuffers() {
-	std::cout << "OBSOLETE." << std::endl;
+	syn::ren::swapchain::framebuffers.resize(syn::ren::swapchain::imageViews.size());
+
+	for (size_t i = 0; i < syn::ren::swapchain::imageViews.size(); i++) {
+		vk::ImageView attachments[] = { syn::ren::swapchain::imageViews[i] };
+
+		vk::FramebufferCreateInfo framebufferInfo{};
+		framebufferInfo.renderPass = syn::ren::renderPass;
+		framebufferInfo.attachmentCount = 1;
+		framebufferInfo.pAttachments = attachments;
+		framebufferInfo.width = syn::window::extent.width;
+		framebufferInfo.height = syn::window::extent.height;
+		framebufferInfo.layers = 1;
+
+		syn::ren::swapchain::framebuffers[i] = syn::device.createFramebuffer(framebufferInfo);
+		std::cout << "Framebuffer " << i + 1 << " successfully created." << std::endl;
+
+	}
 }
 
 void createCommandPool() {
@@ -437,8 +393,8 @@ void createCommandPool() {
 
 void createSemaphores() {
 	vk::SemaphoreCreateInfo sem;
-	syn::device.createSemaphore(&sem, nullptr, &syn::ren::semaphores::wait);
-	syn::device.createSemaphore(&sem, nullptr, &syn::ren::semaphores::signal);
+	syn::device.createSemaphore(&sem, nullptr, &syn::ren::semaphores::imageAvailable);
+	syn::device.createSemaphore(&sem, nullptr, &syn::ren::semaphores::renderFinished);
 }
 
 void createFence() {
@@ -541,14 +497,15 @@ void allocateCommandBuffers() {
 //CLEANUP
 
 void cleanupSwapChain() {
-	
+	for (int i = 0; i < syn::ren::swapchain::framebuffers.size(); ++i) {
+		syn::device.destroyFramebuffer(syn::ren::swapchain::framebuffers[i]);
+	}
 
 	for (int i = 0; i < syn::ren::swapchain::imageViews.size(); ++i) {
 		syn::device.destroyImageView(syn::ren::swapchain::imageViews[i]);
 	}
 
 	syn::device.destroySwapchainKHR(syn::ren::swapchain::self);
-	
 }
 
 //RECREATION
@@ -559,17 +516,17 @@ void recreateSwapChain() {
 	cleanupSwapChain();
 
 	createSwapChain();
+	createImageViews();
+	createFramebuffers();
 }
 
 // RENDERING
 
 void recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t imageIndex) {
 	vk::CommandBufferBeginInfo beginInfo{};
-	beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
-
 	commandBuffer.begin(&beginInfo);
 
-	/*vk::RenderPassBeginInfo renderpassInfo{};
+	vk::RenderPassBeginInfo renderpassInfo{};
 	renderpassInfo.renderPass = syn::ren::renderPass;
 	renderpassInfo.framebuffer = syn::ren::swapchain::framebuffers[imageIndex];
 	renderpassInfo.renderArea.offset = vk::Offset2D(0, 0);
@@ -580,125 +537,27 @@ void recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t imageIndex) {
 	renderpassInfo.clearValueCount = 1;
 	renderpassInfo.pClearValues = &clear;
 
-	commandBuffer.beginRenderPass(&renderpassInfo, vk::SubpassContents::eInline);*/
-	transition_image(commandBuffer, syn::ren::swapchain::images[imageIndex], vk::ImageLayout::eUndefined, vk::ImageLayout::eGeneral);
-	transition_image(commandBuffer, syn::ren::drawImage.image, vk::ImageLayout::eUndefined, vk::ImageLayout::eGeneral);
-
-	vk::RenderingInfo ren{};
-	ren.colorAttachmentCount = 1;
-	ren.pColorAttachments = &syn::ren::colorAttachment;
-	ren.renderArea.extent = vk::Extent2D { syn::ren::drawImage.imageExtent.width, syn::ren::drawImage.imageExtent.height };
-	ren.layerCount = 1;
-
-
+	commandBuffer.beginRenderPass(&renderpassInfo, vk::SubpassContents::eInline);
 	commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, syn::ren::pipeline::self);
-	commandBuffer.beginRendering(&ren);
 
+	vk::Buffer vertBuffers[] = { syn::ren::buffers::vertex };
+	vk::DeviceSize offsets[] = { 0 };
+	commandBuffer.bindVertexBuffers(0, 1, vertBuffers, offsets);
 
 	commandBuffer.setViewport(0, 1, &syn::window::viewport);
 	commandBuffer.setScissor(0, 1, &syn::window::scissor);
-	commandBuffer.draw(3, 1, 0, 0);
-	commandBuffer.endRendering();
-
-	transition_image(commandBuffer, syn::ren::swapchain::images[imageIndex], vk::ImageLayout::eGeneral, vk::ImageLayout::eTransferDstOptimal);
-	transition_image(commandBuffer, syn::ren::drawImage.image, vk::ImageLayout::eGeneral, vk::ImageLayout::eTransferSrcOptimal);
-
-
-	copy_image_to_image(commandBuffer, syn::ren::drawImage.image, syn::ren::swapchain::images[imageIndex], vk::Extent2D{ syn::ren::drawImage.imageExtent.width, syn::ren::drawImage.imageExtent.height }, syn::window::extent);
-
-	transition_image(commandBuffer, syn::ren::drawImage.image, vk::ImageLayout::eTransferSrcOptimal, vk::ImageLayout::eGeneral);
-
-	transition_image(commandBuffer, syn::ren::swapchain::images[imageIndex], vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::ePresentSrcKHR);
-
-
+	commandBuffer.draw(static_cast<uint32_t>(vertices.size()), 1, 0, 0);
+	commandBuffer.endRenderPass();
 	commandBuffer.end();
 
 
 }
 
-void copy_image_to_image(vk::CommandBuffer cmd, vk::Image source, vk::Image destination, vk::Extent2D srcSize, vk::Extent2D dstSize)
-{
-	VkImageBlit2 blitRegion{ .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2, .pNext = nullptr };
-
-	blitRegion.srcOffsets[1].x = srcSize.width;
-	blitRegion.srcOffsets[1].y = srcSize.height;
-	blitRegion.srcOffsets[1].z = 1;
-
-	blitRegion.dstOffsets[1].x = dstSize.width;
-	blitRegion.dstOffsets[1].y = dstSize.height;
-	blitRegion.dstOffsets[1].z = 1;
-
-	blitRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	blitRegion.srcSubresource.baseArrayLayer = 0;
-	blitRegion.srcSubresource.layerCount = 1;
-	blitRegion.srcSubresource.mipLevel = 0;
-
-	blitRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	blitRegion.dstSubresource.baseArrayLayer = 0;
-	blitRegion.dstSubresource.layerCount = 1;
-	blitRegion.dstSubresource.mipLevel = 0;
-
-	VkBlitImageInfo2 blitInfo{ .sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2, .pNext = nullptr };
-	blitInfo.dstImage = destination;
-	blitInfo.dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-	blitInfo.srcImage = source;
-	blitInfo.srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-	blitInfo.filter = VK_FILTER_LINEAR;
-	blitInfo.regionCount = 1;
-	blitInfo.pRegions = &blitRegion;
-
-	vkCmdBlitImage2(cmd, &blitInfo);
-}
-
-vk::SemaphoreSubmitInfo semaphore_submit_info(vk::PipelineStageFlags2 stageMask, vk::Semaphore semaphore)
-{
-	VkSemaphoreSubmitInfo submitInfo{};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-	submitInfo.pNext = nullptr;
-	submitInfo.semaphore = (VkSemaphore)semaphore;
-	submitInfo.stageMask = (VkPipelineStageFlags2)stageMask;
-	submitInfo.deviceIndex = 0;
-	submitInfo.value = 1;
-
-	return submitInfo;
-}
-
-vk::CommandBufferSubmitInfo command_buffer_submit_info(vk::CommandBuffer cmd)
-{
-	VkCommandBufferSubmitInfo info{};
-	info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
-	info.pNext = nullptr;
-	info.commandBuffer = cmd;
-	info.deviceMask = 0;
-
-	return info;
-}
-
-vk::SubmitInfo2 submit_info(vk::CommandBufferSubmitInfo* cmd, vk::SemaphoreSubmitInfo* signalSemaphoreInfo,
-	vk::SemaphoreSubmitInfo* waitSemaphoreInfo)
-{
-	VkSubmitInfo2 info = {};
-	info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
-	info.pNext = nullptr;
-
-	info.waitSemaphoreInfoCount = waitSemaphoreInfo == nullptr ? 0 : 1;
-	info.pWaitSemaphoreInfos = (VkSemaphoreSubmitInfo*)waitSemaphoreInfo;
-
-	info.signalSemaphoreInfoCount = signalSemaphoreInfo == nullptr ? 0 : 1;
-	info.pSignalSemaphoreInfos = (VkSemaphoreSubmitInfo*)signalSemaphoreInfo;
-
-	info.commandBufferInfoCount = 1;
-	info.pCommandBufferInfos = (VkCommandBufferSubmitInfo*) cmd;
-
-	return info;
-}
-
-uint32_t imageIndex;
-
 void draw() {
 	syn::device.waitForFences(1, &syn::ren::fences::inFlight, true, UINT64_MAX);
 
-	vk::Result res = syn::device.acquireNextImageKHR(syn::ren::swapchain::self, UINT64_MAX, syn::ren::semaphores::wait, nullptr, &imageIndex);
+	uint32_t imageIndex;
+	vk::Result res = syn::device.acquireNextImageKHR(syn::ren::swapchain::self, UINT64_MAX, syn::ren::semaphores::imageAvailable, nullptr, &imageIndex);
 
 	if (res == vk::Result::eErrorOutOfDateKHR) {
 		recreateSwapChain();
@@ -710,29 +569,20 @@ void draw() {
 	syn::ren::commandBuffer.reset();
 	recordCommandBuffer(syn::ren::commandBuffer, imageIndex);
 
-	vk::SemaphoreSubmitInfo wait = semaphore_submit_info(vk::PipelineStageFlagBits2::eColorAttachmentOutput,syn::ren::semaphores::wait);
+	vk::SubmitInfo submitInfo{};
+	vk::Semaphore waitSemaphores[] = { syn::ren::semaphores::imageAvailable };
+	vk::PipelineStageFlags waitStages[] = { vk::PipelineStageFlagBits::eColorAttachmentOutput };
+	submitInfo.waitSemaphoreCount = 1;
+	submitInfo.pWaitSemaphores = waitSemaphores;
+	submitInfo.pWaitDstStageMask = waitStages;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &syn::ren::commandBuffer;
 
+	vk::Semaphore signalSemaphores[] = { syn::ren::semaphores::renderFinished };
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = signalSemaphores;
 
-	vk::SemaphoreSubmitInfo signal = semaphore_submit_info(vk::PipelineStageFlagBits2::eAllGraphics, syn::ren::semaphores::signal);
-
-	auto cmd = command_buffer_submit_info(syn::ren::commandBuffer);
-
-	vk::SubmitInfo2 submitInfo{};
-
-	submitInfo.waitSemaphoreInfoCount = 1;
-	submitInfo.pWaitSemaphoreInfos = &wait;
-
-	submitInfo.commandBufferInfoCount = 1;
-	submitInfo.pCommandBufferInfos = &cmd;
-
-	vk::Semaphore signalSemaphores[] = { syn::ren::semaphores::signal };
-	vk::Semaphore waitSemaphores[] = { syn::ren::semaphores::wait };
-	submitInfo.signalSemaphoreInfoCount = 1;
-	submitInfo.pSignalSemaphoreInfos = &signal;
-	submitInfo.waitSemaphoreInfoCount = 1;
-	submitInfo.pWaitSemaphoreInfos = &wait;
-
-	syn::ren::queues::graphics.submit2(1, &submitInfo, syn::ren::fences::inFlight);
+	syn::ren::queues::graphics.submit(1, &submitInfo, syn::ren::fences::inFlight);
 
 	vk::PresentInfoKHR presentInfo{};
 	presentInfo.waitSemaphoreCount = 1;

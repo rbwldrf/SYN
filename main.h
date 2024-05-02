@@ -1,5 +1,6 @@
 #pragma once
 
+
 // Enable the WSI extensions
 #if defined(__ANDROID__)
 #define VK_USE_PLATFORM_ANDROID_KHR
@@ -16,6 +17,7 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
 #include <vulkan/vulkan.hpp>
+
 
 #include <iostream>
 #include <vector>
@@ -40,6 +42,8 @@
 #include "glslang/SPIRV/GlslangToSpv.h"
 #include "glslang/SPIRV/spirv.hpp"
 
+#include "fuck.h"
+
 #define MAGIC_ENUM_SUPPORTED_ALIASES 1
 
 namespace fs = std::filesystem;
@@ -54,5 +58,21 @@ namespace fs = std::filesystem;
    OutputDebugStringW( os_.str().c_str() );  \
 }
 
+
+struct AllocatedBuffer {
+	vk::Buffer buffer;
+	VmaAllocation allocation;
+	VmaAllocationInfo info;
+};
+
+struct AllocatedImage {
+	vk::Image image;
+	vk::ImageView imageView;
+	VmaAllocation allocation;
+	vk::Extent3D imageExtent;
+	vk::Format imageFormat;
+};
+
 #include "layout.h"
 #include "renderer.h"
+

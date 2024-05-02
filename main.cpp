@@ -193,6 +193,15 @@ void CompileShader(const char* source,vk::ShaderStageFlagBits type, std::vector<
 void selectDevice() {
 	auto pds = syn::instance.enumeratePhysicalDevices();
 
+
+	std::vector<vk::PhysicalDevice, std::allocator<vk::PhysicalDevice>> bla;
+
+	for (int i = 0; i < pds.size(); ++i) {
+		if (pds[i].getProperties().deviceType == vk::PhysicalDeviceType::eDiscreteGpu) { bla.push_back(pds[i]); }
+	}
+
+	pds = bla;
+
 	std::cout << ("PHYSICAL DEVICES FOUND: " + std::to_string(pds.size())) << std::endl;
 
 	if (pds.size() <= 0) { exit(-1); }
@@ -295,6 +304,26 @@ void selectDevice() {
 			the_extensions.push_back(x.extensionName);
 			supportsSwapchain = true;
 		}
+		if (x.extensionName == std::string("VK_KHR_buffer_device_address")) {
+			the_extensions.push_back(x.extensionName);
+			std::cout << "Device selected supports buffer device address." << std::endl;
+
+		}
+		if (x.extensionName == std::string("VK_EXT_descriptor_indexing")) {
+			the_extensions.push_back(x.extensionName);
+			std::cout << "Device selected supports descriptor indexing." << std::endl;
+
+		}
+		if (x.extensionName == std::string("VK_KHR_dynamic_rendering")) {
+			the_extensions.push_back(x.extensionName);
+			std::cout << "Device selected supports dynamic rendering." << std::endl;
+
+		}
+		if (x.extensionName == std::string("VK_KHR_synchronization2")) {
+			the_extensions.push_back(x.extensionName);
+			std::cout << "Device selected supports synchronization 2." << std::endl;
+
+		}
 	}
 
 	std::cout << "Device selected " << (supportsSwapchain ? "supports" : "does not support") << " swapchains." << std::endl;
@@ -316,12 +345,25 @@ void selectDevice() {
 
 	qci.push_back(pqci);
 
-	vk::PhysicalDeviceFeatures pdf{};
+	std::vector<vk::PhysicalDeviceFeatures> pdf{};
+
+	vk::PhysicalDeviceBufferDeviceAddressFeatures baf;
+	baf.bufferDeviceAddress = true;
+
+	vk::PhysicalDeviceSynchronization2Features sync;
+	sync.synchronization2 = true;
+	sync.pNext = &baf;
+
+	vk::PhysicalDeviceDynamicRenderingFeatures dr;
+	dr.dynamicRendering = true;
+	dr.pNext = &sync;
+
 
 	vk::DeviceCreateInfo ci{}; ci
+		.setPNext(&dr)
 		.setQueueCreateInfos(qci)
 		.setQueueCreateInfoCount(qci.size())
-		.setPEnabledFeatures(&pdf)
+		.setPEnabledFeatures(pdf.data())
 		.setEnabledExtensionCount(the_extensions.size())
 		.setPpEnabledExtensionNames(the_extensions.data())
 		.setEnabledLayerCount(0);
@@ -420,45 +462,57 @@ int main()
 
 	syn::window::extent = getSwapExtent(syn::ren::surface::capabilities);
 
+	createAllocator();
+
 	createSwapChain();
-	createImageViews();
 
 	precomputeShaders();
 
+
 	createPipelineLayout();
-	createRenderPass();
 	createRenderPipeline();
-	createFramebuffers();
 	createCommandPool();
 
+
 	allocateCommandBuffers();
+	createVertexBuffer();
 
 	createSemaphores();
 	createFence();
+
+	Uint64 tickLast = 0;
 
 	// Poll for user input.
 	bool stillRunning = true;
 	while(stillRunning) {
 
-		SDL_Event event;
-		while(SDL_PollEvent(&event)) {
+		auto tick = SDL_GetTicks();
+		auto delta = tick - tickLast;
 
-			switch(event.type) {
 
-			case SDL_EVENT_QUIT:
-				stillRunning = false;
-				break;
+		if (delta > 10) {
+			SDL_Event event;
+			if(SDL_PollEvent(&event)!=0) {
 
-			case SDL_EVENT_WINDOW_RESIZED:
-				recreateSwapChain();
-				break;
+				switch(event.type) {
 
-			default:
-				draw();
-				break;
+				case SDL_EVENT_QUIT:
+					stillRunning = false;
+					break;
+
+				case SDL_EVENT_WINDOW_RESIZED:
+					recreateSwapChain();
+					break;
+
+				default:
+					draw();
+					break;
+				}	
+
 			}
 		}
 
+		tickLast = SDL_GetTicks();
 		SDL_Delay(10);
 	}
 

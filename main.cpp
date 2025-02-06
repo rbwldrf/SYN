@@ -358,6 +358,12 @@ void selectDevice() {
 	dr.dynamicRendering = true;
 	dr.pNext = &sync;
 
+	vk::PhysicalDeviceDescriptorIndexingFeatures di;
+	di.descriptorBindingPartiallyBound = true;
+	di.descriptorBindingSampledImageUpdateAfterBind = true;
+	di.descriptorBindingVariableDescriptorCount = true;
+	di.pNext = &dr;
+
 
 	vk::DeviceCreateInfo ci{}; ci
 		.setPNext(&dr)
@@ -470,8 +476,8 @@ int main()
 
 
 	createPipelineLayout();
-	createRenderPipeline();
 	createCommandPool();
+	createRenderPipeline();
 
 
 	allocateCommandBuffers();
@@ -492,7 +498,7 @@ int main()
 
 		if (delta > 10) {
 			SDL_Event event;
-			if(SDL_PollEvent(&event)!=0) {
+			if(SDL_PollEvent(&event)!=SDL_FALSE) {
 
 				switch(event.type) {
 
@@ -504,12 +510,14 @@ int main()
 					recreateSwapChain();
 					break;
 
-				default:
-					draw();
+				default:					
 					break;
-				}	
 
+				}	
 			}
+			
+			draw();
+			SDL_Delay(10);
 		}
 
 		tickLast = SDL_GetTicks();

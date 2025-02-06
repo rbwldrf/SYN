@@ -31,6 +31,8 @@ namespace syn {
 
 		vk::RenderPass renderPass;
 
+		std::vector<vk::DescriptorSetLayout> desc_layouts;
+
 		vk::RenderingAttachmentInfo colorAttachment{};
 		vk::AttachmentReference colorAttachmentRef{};
 

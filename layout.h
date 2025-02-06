@@ -35,6 +35,7 @@ namespace syn {
 
 		extern AllocatedImage drawImage;
 
+		extern std::vector<vk::DescriptorSetLayout> desc_layouts;
 
 		extern vk::RenderingAttachmentInfo colorAttachment;
 		extern vk::AttachmentReference colorAttachmentRef;

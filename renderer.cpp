@@ -1,17 +1,24 @@
 #include "renderer.h"
 
+struct pConst {
+	vk::DeviceAddress vBuf;
+};
+
 extern struct Vertex {
-	glm::vec2 pos;
+	glm::vec3 pos;
 	glm::vec3 color;
 
-	static vk::VertexInputBindingDescription getBindingDesc() {
+	static std::vector<vk::VertexInputBindingDescription> getBindingDesc() {
 		vk::VertexInputBindingDescription bindingDesc{};
 		bindingDesc.binding = 0;
 		bindingDesc.stride = sizeof(Vertex);
 		bindingDesc.inputRate = vk::VertexInputRate::eVertex;
 		std::cout << "Binding description created." << std::endl;
 
-		return bindingDesc;
+		std::vector<vk::VertexInputBindingDescription> a = {};
+		a.push_back(bindingDesc);
+
+		return a;
 	}
 
 	static std::array<vk::VertexInputAttributeDescription, 2> getAttributeDescriptions() {
@@ -70,10 +77,14 @@ void transition_image(vk::CommandBuffer cmd, vk::Image image, vk::ImageLayout cu
 }
 
 
-const std::vector<Vertex> vertices = std::vector<Vertex>({
-	{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-	{{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-	{{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+std::vector<Vertex> vertices = std::vector<Vertex>({
+	{{0.0f, -0.5f,0.0f}, {1.0f, 0.0f, 0.0f}},
+	{{0.5f, 0.5f,0.0f}, {0.0f, 1.0f, 0.0f}},
+	{{-0.5f, 0.5f,0.0f}, {0.0f, 0.0f, 1.0f}},
+	{{0.0f, -0.5f,0.0f}, {1.0f, 0.0f, 0.0f}},
+	{{0.5f, 0.5f,0.0f}, {0.0f, 1.0f, 0.0f}},
+	{{-0.5f, 0.5f,0.0f}, {0.0f, 0.0f, 1.0f}}
+
 	});
 
 struct GPUMeshBuffers {
@@ -150,7 +161,7 @@ bool vulkanSDLInit() {
 		return false;
 	}
 
-	
+
 
 	// Get WSI extensions from SDL (we can add more if we like - we just can't remove these)
 	unsigned extension_count;
@@ -201,10 +212,6 @@ bool vulkanSDLInit() {
 	return true;
 }
 
-void createImageViews() {
-	std::cout << "OBSOLETE." << std::endl;
-}
-
 void createSwapChain() {
 
 	syn::ren::swapchain::imageCount = syn::ren::surface::capabilities.minImageCount + 1;
@@ -249,7 +256,7 @@ void createSwapChain() {
 	vk::Extent3D drawImageExtent = {
 	syn::window::extent.width,
 	syn::window::extent.height,
-	1};
+	1 };
 
 	syn::ren::drawImage.imageFormat = vk::Format::eR16G16B16A16Sfloat;
 	syn::ren::drawImage.imageExtent = drawImageExtent;
@@ -265,7 +272,7 @@ void createSwapChain() {
 	rimg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 	rimg_allocinfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-	vmaCreateImage(syn::ren::memory::allocator, (VkImageCreateInfo*)&img_info, &rimg_allocinfo, (VkImage*)& syn::ren::drawImage.image, &syn::ren::drawImage.allocation, nullptr);
+	vmaCreateImage(syn::ren::memory::allocator, (VkImageCreateInfo*)&img_info, &rimg_allocinfo, (VkImage*)&syn::ren::drawImage.image, &syn::ren::drawImage.allocation, nullptr);
 
 
 	auto img_view_info = imageview_create_info(syn::ren::drawImage.imageFormat, syn::ren::drawImage.image, vk::ImageAspectFlagBits::eColor);
@@ -281,17 +288,16 @@ void createSwapChain() {
 
 }
 
+auto bd = Vertex::getBindingDesc();
+auto attr = Vertex::getAttributeDescriptions();
+
 void createPipelineLayout() {
 
-	auto bind = Vertex::getBindingDesc();
-	auto attr = Vertex::getAttributeDescriptions();
 
-	vk::VertexInputBindingDescription* bla = &bind;
-
-	syn::ren::meta::vertexInputInfo.vertexBindingDescriptionCount = 0;
-	syn::ren::meta::vertexInputInfo.vertexAttributeDescriptionCount = 0;
-	syn::ren::meta::vertexInputInfo.pVertexBindingDescriptions = nullptr;
-	syn::ren::meta::vertexInputInfo.pVertexAttributeDescriptions = nullptr;
+	syn::ren::meta::vertexInputInfo.vertexBindingDescriptionCount = bd.size();
+	syn::ren::meta::vertexInputInfo.vertexAttributeDescriptionCount = attr.size();
+	syn::ren::meta::vertexInputInfo.pVertexBindingDescriptions = bd.data();
+	syn::ren::meta::vertexInputInfo.pVertexAttributeDescriptions = attr.data();
 
 	syn::ren::meta::inputAssembly.topology = vk::PrimitiveTopology::eTriangleList;
 	syn::ren::meta::inputAssembly.primitiveRestartEnable = false;
@@ -304,6 +310,7 @@ void createPipelineLayout() {
 	syn::ren::meta::rasterizer.depthClampEnable = false;
 	syn::ren::meta::rasterizer.rasterizerDiscardEnable = false;
 	syn::ren::meta::rasterizer.polygonMode = vk::PolygonMode::eFill;
+	syn::ren::meta::rasterizer.cullMode = vk::CullModeFlagBits::eBack;
 	syn::ren::meta::rasterizer.lineWidth = 1.0f;
 	syn::ren::meta::rasterizer.depthBiasEnable = false;
 	syn::ren::meta::rasterizer.depthBiasConstantFactor = 0.0f;
@@ -327,13 +334,35 @@ void createPipelineLayout() {
 	syn::ren::meta::colorBlending.logicOp = vk::LogicOp::eCopy;
 	syn::ren::meta::colorBlending.attachmentCount = 1;
 	syn::ren::meta::colorBlending.pAttachments = &syn::ren::meta::colorBlendAttachment;
+	
+	vk::PushConstantRange range;
+	range.size = sizeof(pConst);
+	range.stageFlags = vk::ShaderStageFlagBits::eVertex;
+
+	vk::DescriptorSetLayoutBinding dslBind;
+	dslBind.binding = 0;
+	dslBind.descriptorType = vk::DescriptorType::eUniformBuffer;
+	dslBind.stageFlags = vk::ShaderStageFlagBits::eVertex;
+
+	vk::DescriptorSetLayoutCreateInfo dslLayout;
+	dslLayout.bindingCount = 1;
+	dslLayout.pBindings = &dslBind;
+
+	syn::ren::desc_layouts.resize(1);
+	syn::device.createDescriptorSetLayout(&dslLayout, 0, syn::ren::desc_layouts.data());
 
 	vk::PipelineLayoutCreateInfo layoutInfo{};
+	layoutInfo.pushConstantRangeCount = 1;
+	layoutInfo.pPushConstantRanges = &range;
+	layoutInfo.setLayoutCount = 1;
+	layoutInfo.pSetLayouts = syn::ren::desc_layouts.data();
+
 
 	syn::device.createPipelineLayout(&layoutInfo, nullptr, &syn::ren::pipeline::layout);
 
 	std::cout << "Pipeline layout successfully created." << std::endl;
 }
+
 
 vk::ImageCreateInfo create_image_info(vk::Format fmt, vk::ImageUsageFlags usage, vk::Extent3D extent, vk::ImageLayout layout) {
 	VkImageCreateInfo info = {};
@@ -378,12 +407,6 @@ vk::ImageViewCreateInfo imageview_create_info(vk::Format format, vk::Image image
 	return info;
 }
 
-void createRenderPass() {
-
-	std::cout << "OBSOLETE." << std::endl;
-
-}
-
 void createRenderPipeline() {
 	vk::PipelineMultisampleStateCreateInfo multisampling{};
 	multisampling.sampleShadingEnable = false;
@@ -419,10 +442,6 @@ void createRenderPipeline() {
 	syn::device.createGraphicsPipelines(nullptr, 1, &pipelineInfo, nullptr, &syn::ren::pipeline::self);
 
 	std::cout << "Pipeline successfully created." << std::endl;
-}
-
-void createFramebuffers() {
-	std::cout << "OBSOLETE." << std::endl;
 }
 
 void createCommandPool() {
@@ -482,7 +501,7 @@ GPUMeshBuffers uploadMesh(std::vector<uint32_t> indices, std::vector<Vertex> ver
 	GPUMeshBuffers newSurface;
 
 	//create vertex buffer
-	newSurface.vertexBuffer = createBuffer(vertexBufferSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eShaderDeviceAddress,
+	newSurface.vertexBuffer = createBuffer(vertexBufferSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eShaderDeviceAddress,
 		VMA_MEMORY_USAGE_GPU_ONLY);
 
 	//find the adress of the vertex buffer
@@ -494,7 +513,7 @@ GPUMeshBuffers uploadMesh(std::vector<uint32_t> indices, std::vector<Vertex> ver
 
 	AllocatedBuffer staging = createBuffer(vertexBufferSize + indexBufferSize, vk::BufferUsageFlagBits::eTransferSrc, VMA_MEMORY_USAGE_CPU_ONLY);
 
-
+	
 
 	vk::CommandBufferBeginInfo beginInfo{};
 	syn::ren::commandBuffer.begin(&beginInfo);
@@ -519,11 +538,11 @@ GPUMeshBuffers uploadMesh(std::vector<uint32_t> indices, std::vector<Vertex> ver
 
 }
 
+GPUMeshBuffers bla;
 
 void createVertexBuffer() {
 
-
-	auto bla = uploadMesh({ 0,1,2 }, vertices);
+	bla = uploadMesh({ 0,1,2, 3, 4, 5 }, vertices);
 
 }
 
@@ -541,14 +560,14 @@ void allocateCommandBuffers() {
 //CLEANUP
 
 void cleanupSwapChain() {
-	
+
 
 	for (int i = 0; i < syn::ren::swapchain::imageViews.size(); ++i) {
 		syn::device.destroyImageView(syn::ren::swapchain::imageViews[i]);
 	}
 
 	syn::device.destroySwapchainKHR(syn::ren::swapchain::self);
-	
+
 }
 
 //RECREATION
@@ -587,17 +606,25 @@ void recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t imageIndex) {
 	vk::RenderingInfo ren{};
 	ren.colorAttachmentCount = 1;
 	ren.pColorAttachments = &syn::ren::colorAttachment;
-	ren.renderArea.extent = vk::Extent2D { syn::ren::drawImage.imageExtent.width, syn::ren::drawImage.imageExtent.height };
+	ren.renderArea.extent = vk::Extent2D{ syn::ren::drawImage.imageExtent.width, syn::ren::drawImage.imageExtent.height };
 	ren.layerCount = 1;
 
+	const vk::ArrayProxy<const vk::DeviceSize> offsets{ 0 };
+
+	pConst push;
+	push.vBuf = bla.vertexBufferAddress;
+
+	commandBuffer.bindIndexBuffer(bla.indexBuffer.buffer, 0, vk::IndexType::eUint32);
+	commandBuffer.bindVertexBuffers(0, bla.vertexBuffer.buffer, offsets);
 
 	commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, syn::ren::pipeline::self);
 	commandBuffer.beginRendering(&ren);
 
+	commandBuffer.pushConstants(syn::ren::pipeline::layout, vk::ShaderStageFlagBits::eVertex, 0, sizeof(pConst), &push);
 
 	commandBuffer.setViewport(0, 1, &syn::window::viewport);
 	commandBuffer.setScissor(0, 1, &syn::window::scissor);
-	commandBuffer.draw(3, 1, 0, 0);
+	commandBuffer.drawIndexed(6, 1, 0, 0, 0);
 	commandBuffer.endRendering();
 
 	transition_image(commandBuffer, syn::ren::swapchain::images[imageIndex], vk::ImageLayout::eGeneral, vk::ImageLayout::eTransferDstOptimal);
@@ -688,7 +715,7 @@ vk::SubmitInfo2 submit_info(vk::CommandBufferSubmitInfo* cmd, vk::SemaphoreSubmi
 	info.pSignalSemaphoreInfos = (VkSemaphoreSubmitInfo*)signalSemaphoreInfo;
 
 	info.commandBufferInfoCount = 1;
-	info.pCommandBufferInfos = (VkCommandBufferSubmitInfo*) cmd;
+	info.pCommandBufferInfos = (VkCommandBufferSubmitInfo*)cmd;
 
 	return info;
 }
@@ -710,7 +737,7 @@ void draw() {
 	syn::ren::commandBuffer.reset();
 	recordCommandBuffer(syn::ren::commandBuffer, imageIndex);
 
-	vk::SemaphoreSubmitInfo wait = semaphore_submit_info(vk::PipelineStageFlagBits2::eColorAttachmentOutput,syn::ren::semaphores::wait);
+	vk::SemaphoreSubmitInfo wait = semaphore_submit_info(vk::PipelineStageFlagBits2::eColorAttachmentOutput, syn::ren::semaphores::wait);
 
 
 	vk::SemaphoreSubmitInfo signal = semaphore_submit_info(vk::PipelineStageFlagBits2::eAllGraphics, syn::ren::semaphores::signal);
